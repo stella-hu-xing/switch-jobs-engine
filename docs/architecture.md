@@ -261,13 +261,22 @@ may contain real resume/profile content). Cloud Run: same shape in GCS.
 
 ## 6. Deployment shape
 
-- Request-serving: Cloud Run service running `uvicorn app.main:app` via the
+- **Request-serving**: Cloud Run service running `uvicorn app.main:app` via the
   provided `Dockerfile` (honors `$PORT`).
-- Long-running ingestion/enrichment: intended as a separate Cloud Run Job
+- **Long-running ingestion/enrichment**: intended as a separate Cloud Run Job
   (`python -m app.worker`, not yet implemented — see Known Gaps in
   `AGENTS.md`) rather than blocking request-serving uvicorn workers.
-- `Makefile` wraps local dev (`make install`, `make dev`, `make test`) and
-  deploy (`make deploy` -> `gcloud run deploy --source .`).
+- **Infrastructure as Code**: Terraform configuration in `infra/terraform/`
+  provisions all GCP resources:
+  - Cloud Run service (`google_cloud_run_v2_service`)
+  - GCS bucket for `GCSStorage` (`google_storage_bucket`)
+  - Artifact Registry repository for container images (`google_artifact_registry_repository`)
+  - Secret Manager secrets for API keys (`google_secret_manager_secret`)
+  - Dedicated runtime service account with least-privilege IAM bindings
+- **Makefile** wraps local dev (`make install`, `make dev`, `make test`) and
+  Terraform deploy (`make deploy` -> `docker-push` + `tf-apply`).
+  Legacy `make deploy-quick` uses `gcloud run deploy --source .` for rapid iteration
+  (bypasses Terraform state).
 
 ## 7. Ethics / sourcing boundaries
 

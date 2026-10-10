@@ -35,15 +35,19 @@ app/
   api/deps.py             shared FastAPI Depends() providers (storage, llm)
   modules/<name>/         one package per workflow stage:
     profile/              Self Preparation -> CandidateProfile
-    ingestion/             connectors/ (greenhouse, lever, manual_url) + normalize/dedup
-    company_research/      culture/vision/tech-stack summarization + match score
-    matching/               deterministic scoring (scoring.py) + LLM rationale (service.py)
+    ingestion/            connectors/ (greenhouse, lever, manual_url) + normalize/dedup
+    company_research/     culture/vision/tech-stack summarization + match score
+    matching/              deterministic scoring (scoring.py) + LLM rationale (service.py)
     workspace/              job status state machine
     application_prep/      tailored resume/cover letter/answers + APPROVAL GATE
-    interview_prep/         briefing, mock interview loop, debrief capture
+    interview_prep/        briefing, mock interview loop, debrief capture
     orchestration/          plain sequential pipeline wiring the above together
 tests/                    pytest, mock storage (InMemoryStorage) + mock/offline LLM
 docs/architecture.md      full design doc (read this for "why")
+infra/terraform/          Terraform IaC for GCP deployment (Cloud Run, GCS, IAM, secrets)
+  README.md               deployment workflow and runbook
+  *.tf                    resource definitions
+  terraform.tfvars        (gitignored) local variable values
 data/                     LocalJSONStorage default root (gitignored — may contain real resume data)
 ```
 
@@ -115,6 +119,11 @@ without spending any tokens. Set `OPENROUTER_API_KEY` to get real model output.
   in CI.
 - No auth/multi-tenant support — this is a single-user personal tool today.
 - GCS backend (`GCSStorage`) is implemented but untested against a real bucket.
+  Terraform in `infra/terraform/` provisions the bucket and IAM bindings, so
+  running `make deploy` exercises this path end-to-end.
 - No Firestore/Postgres backend yet (deferred per the "not decided yet" note
   in `init.md`); the `StorageBackend` protocol exists specifically to make
   that swap non-invasive later.
+- The background Cloud Run Job (`python -m app.worker`) is scaffolded in
+  `infra/terraform/cloud_run_job.tf` but gated behind `var.enable_worker_job`
+  (default `false`) because `app/worker.py` is not yet implemented.

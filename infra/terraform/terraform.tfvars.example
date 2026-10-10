@@ -1,0 +1,15 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit the real terraform.tfvars to version control!
+
+project_id        = "your-gcp-project-id"
+region            = "europe-west1"
+service_name      = "switch-jobs-engine"
+gcs_bucket_name   = "switch-jobs-engine-data"
+gcs_prefix        = "switch-jobs-engine"
+image             = ""  # e.g. "us-docker.pkg.dev/your-project/switch-jobs-engine-repo/switch-jobs-engine:v1" (empty -> build from source)
+
+# Supply these via TF_VAR_* env vars or a .tfvars file (never committed)
+openrouter_api_key = "<get-from-openrouter.ai>"
+
+langfuse_public_key  = ""  # omit if not using Langfuse
+langfuse_secret_key  = ""

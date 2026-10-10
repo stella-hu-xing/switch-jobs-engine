@@ -24,3 +24,11 @@ data/
 
 # OS / editor
 .DS_Store
+
+# Terraform state and variables (never commit secrets or state)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.local
+*.tfvars
+!.tfvars.example

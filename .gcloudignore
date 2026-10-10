@@ -1,0 +1,27 @@
+# .venv directory (contains all Python packages)
+.venv/
+venv/
+
+# Local data store (personal resume/profile content)
+data/
+!data/.gitkeep
+
+# Git
+.git/
+
+# Terraform
+terraform.tfstate*
+*.tfstate*
+.terraform/
+*.tfvars
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
