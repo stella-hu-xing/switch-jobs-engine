@@ -85,3 +85,42 @@ connectors.
   ground is flagged, not silently inserted.
 - **No LinkedIn scraping**: LinkedIn content only enters the system via a
   user-pasted URL or text; sourcing otherwise uses public Greenhouse/Lever APIs.
+
+## Future Steps
+
+### 1. Productionize
+
+- **Authentication & authorization**: Add proper auth (OAuth/OIDC) for user identity management.
+- **Testing infrastructure**: Add unit tests per module, integration tests for the full pipeline, and test-coverage reporting in CI (currently a known gap).
+- **Rate limiting & abuse protection**: Implement request throttling, API key management, and usage quotas.
+- **Database migration**: Move from JSON/GCS storage to a proper database (PostgreSQL/Firestore) with migrations, connection pooling, and backups.
+- **CI/CD hardening**: Add linting, security scanning, and staging environment deployment.
+- **Error handling & retries**: Comprehensive error handling, circuit breakers, dead-letter queues for async tasks.
+- **Secrets management**: Integrate with GCP Secret Manager or Vault for runtime secret rotation.
+- **Health checks & readiness probes**: Extend `/health` with dependency checks (GCS, LLM API, database).
+- **Graceful degradation**: Offline mode fallbacks, cached responses when dependencies are unavailable.
+
+### 2. Set Evaluation Benchmark
+
+- **Golden dataset**: Curate a labeled dataset of (profile, job) pairs with ground-truth match scores for regression testing.
+- **Automated eval pipeline**: CI job that runs the matching/scoring pipeline against the golden dataset and tracks metrics over time.
+- **Key metrics**:
+  - Ranking quality: NDCG@k, MAP, Recall@k for job recommendations
+  - Application prep quality: groundedness rate, hallucination rate, human eval score
+  - Latency: p50/p95/p99 for each pipeline stage
+  - Cost: tokens per workflow run, cost per successful application
+- **A/B testing framework**: Infrastructure to compare prompt versions, model tiers, and scoring weights.
+- **Regression alerts**: Alert when evaluation metrics drop below thresholds.
+
+### 3. Add Observability
+
+- **Structured logging**: JSON logs with trace IDs, correlation IDs, structured fields for querying.
+- **Distributed tracing**: Full OpenTelemetry integration across FastAPI, LLM calls, storage ops, and background jobs.
+- **Metrics dashboard**: Simple monitoring dashboard for:
+  - Request volume, latency, error rates by endpoint
+  - LLM token usage, cost, latency by model tier
+  - Storage operations (reads/writes, latency, errors)
+  - Pipeline stage throughput and bottlenecks
+- **Alerting**: Basic alerts for error rate spikes and pipeline failures (optional).
+- **Audit logging**: Immutable audit trail for approval gate and submissions.
+- **Langfuse integration**: Enable by default for LLM trace inspection, prompt versioning, and evaluation.

@@ -1,0 +1,119 @@
+name: Deploy to GCP (Terraform)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Container image tag to deploy (defaults to git SHA)'
+        required: false
+        default: ''
+      enable_worker_job:
+        description: 'Enable the background Cloud Run Job'
+        required: false
+        type: boolean
+        default: false
+      allow_unauthenticated:
+        description: 'Allow unauthenticated access to the service'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-push:
+    name: Build & Push Container Image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.value }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          export_credentials: true
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine image tag
+        id: image
+        run: |
+          TAG="${{ github.event.inputs.image_tag || github.sha }}"
+          echo "value=us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/switch-jobs-engine-repo/switch-jobs-engine:${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Terraform Apply
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    env:
+      TF_VAR_image: ${{ needs.build-and-push.outputs.image }}
+      TF_VAR_openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+      TF_VAR_langfuse_public_key: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      TF_VAR_langfuse_secret_key: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      TF_VAR_enable_worker_job: ${{ github.event.inputs.enable_worker_job }}
+      TF_VAR_allow_unauthenticated: ${{ github.event.inputs.allow_unauthenticated }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          export_credentials: true
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">= 1.6.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file=terraform.tfvars \
+            -input=false \
+            -lock-timeout=300s \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Terraform Output
+        if: always()
+        run: terraform output
